@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, setToken } from '../api'
+import { api, setSessionUser, setToken } from '../api'
 
 export default function Login({ onSuccess }) {
   const [email, setEmail] = useState('')
@@ -18,6 +18,7 @@ export default function Login({ onSuccess }) {
           try {
             const data = await api('/login', { method: 'POST', body: JSON.stringify({ email, password }) })
             setToken(data.token)
+            setSessionUser(data.user || null)
             onSuccess(data.token)
           } catch (err) {
             setError(err.message)

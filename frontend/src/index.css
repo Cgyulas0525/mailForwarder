@@ -4,9 +4,12 @@
   --color-cream: #fdfaf3;
   --color-paper: #f8f1e4;
   --color-sand: #f5ebd8;
+  --color-brand-100: #e8f3e2;
+  --color-brand-400: #7cb46a;
   --color-brand-600: #4a7c3f;
   --color-brand-700: #3d6335;
   --color-brand-800: #2d4a2b;
+  --color-brand-900: #1e3320;
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 }
 

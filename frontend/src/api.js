@@ -9,6 +9,23 @@ export function setToken(token) {
     sessionStorage.setItem('mf_token', token)
   } else {
     sessionStorage.removeItem('mf_token')
+    sessionStorage.removeItem('mf_user')
+  }
+}
+
+export function getSessionUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem('mf_user') || 'null')
+  } catch {
+    return null
+  }
+}
+
+export function setSessionUser(user) {
+  if (user) {
+    sessionStorage.setItem('mf_user', JSON.stringify(user))
+  } else {
+    sessionStorage.removeItem('mf_user')
   }
 }
 

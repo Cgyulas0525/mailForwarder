@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -27,7 +28,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'token' => $token,
-            'user' => ['name' => $user->name, 'email' => $user->email],
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -40,8 +41,31 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        return response()->json($this->userPayload($request->user()));
+    }
 
-        return response()->json(['name' => $user->name, 'email' => $user->email]);
+    public function update(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'current_password' => ['required_with:password', 'current_password'],
+        ]);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (! empty($data['password'])) {
+            $user->password = $data['password'];
+        }
+        $user->save();
+
+        return response()->json($this->userPayload($user));
+    }
+
+    private function userPayload(User $user): array
+    {
+        return ['name' => $user->name, 'email' => $user->email];
     }
 }

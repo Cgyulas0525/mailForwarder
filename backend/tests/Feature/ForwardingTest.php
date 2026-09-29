@@ -20,6 +20,7 @@ use App\Services\Sync\ForwardPlanner;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\ArrayMailboxClient;
 use Tests\TestCase;
@@ -268,6 +269,33 @@ class ForwardingTest extends TestCase
             ->assertJsonPath('data.accounts.0.email', 'fiok@gmail.com');
 
         $this->getJson('/api/accounts/99999')->assertNotFound();
+    }
+
+    public function test_admin_can_update_profile(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+            'name' => 'Régi Név',
+            'email' => 'regi@example.com',
+        ]);
+        Sanctum::actingAs($admin);
+
+        $this->putJson('/api/me', [
+            'name' => 'Új Név',
+            'email' => 'uj@example.com',
+            'password' => 'ujjelszo8',
+            'password_confirmation' => 'ujjelszo8',
+            'current_password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('name', 'Új Név')
+            ->assertJsonPath('email', 'uj@example.com');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'name' => 'Új Név',
+            'email' => 'uj@example.com',
+        ]);
+        $this->assertTrue(Hash::check('ujjelszo8', $admin->fresh()->password));
     }
 
     public function test_disabled_account_is_not_checked(): void

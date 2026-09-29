@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { getToken } from './api'
+import Dashboard from './pages/Dashboard'
 import Layout from './components/Layout'
 import AccountsCreate from './pages/accounts/Create'
 import AccountsEdit from './pages/accounts/Edit'
@@ -15,6 +16,7 @@ import RulesCreate from './pages/rules/Create'
 import RulesEdit from './pages/rules/Edit'
 import RulesIndex from './pages/rules/Index'
 import WindowSettings from './pages/WindowSettings'
+import Profile from './pages/Profile'
 
 export default function App() {
   const [token, setTokenState] = useState(getToken())
@@ -26,7 +28,8 @@ export default function App() {
   return (
     <Layout onLogout={() => setTokenState(null)}>
       <Routes>
-        <Route path="/" element={<Navigate to="/fiokok" replace />} />
+        <Route path="/" element={<Navigate to="/indito-pult" replace />} />
+        <Route path="/indito-pult" element={<Dashboard />} />
         <Route path="/fiokok" element={<AccountsIndex />} />
         <Route path="/fiokok/uj" element={<AccountsCreate />} />
         <Route path="/fiokok/:id/szerkesztes" element={<AccountsEdit />} />
@@ -42,7 +45,8 @@ export default function App() {
         <Route path="/naplo" element={<Log />} />
         <Route path="/teszt" element={<Preview />} />
         <Route path="/idoablak" element={<WindowSettings />} />
-        <Route path="*" element={<Navigate to="/fiokok" replace />} />
+        <Route path="/profil" element={<Profile />} />
+        <Route path="*" element={<Navigate to="/indito-pult" replace />} />
       </Routes>
     </Layout>
   )
