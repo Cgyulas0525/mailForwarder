@@ -113,6 +113,38 @@ class ForwardingTest extends TestCase
         $this->assertNotSame('szamla@pelda.hu', $this->mailer->sent[0]->account->email);
     }
 
+    public function test_szep_kartya_sender_rule_and_szamla_link_rule(): void
+    {
+        $account = $this->account();
+        $szepSender = EmailSender::query()->create([
+            'name' => 'SZÉP kártya',
+            'email' => 'noreplyszepkartya@mbhbank.hu',
+            'is_active' => true,
+        ]);
+        $noemi = ForwardRecipient::query()->create(['name' => 'Noémi', 'email' => 'noemi@example.com', 'is_active' => true]);
+        $tunde = ForwardRecipient::query()->create(['name' => 'Tünde', 'email' => 'tunde@example.com', 'is_active' => true]);
+        $szep = $this->rule($account, 'any', false, [$szepSender], [$noemi, $tunde], 'szép kártya');
+        $szamla = $this->rule($account, 'any', true, [], [$noemi, $tunde], 'számla');
+        $matcher = app(ForwardingRuleMatcher::class);
+
+        $fromBank = $this->message($account, 'noreplyszepkartya@mbhbank.hu', []);
+        $this->assertTrue($matcher->explain($szep, $fromBank)['matched']);
+        $this->assertFalse($matcher->explain($szamla, $fromBank)['matched']);
+
+        $invoice = $this->message($account, 'gm.amentes@szamlazz.hu', ['https://www.szamlazz.hu/szamla/fiok/1'], uid: 2);
+        $this->assertFalse($matcher->explain($szep, $invoice)['matched']);
+        $this->assertTrue($matcher->explain($szamla, $invoice)['matched']);
+
+        $stranger = $this->message($account, 'valaki@example.com', [], uid: 3);
+        $this->assertFalse($matcher->explain($szep, $stranger)['matched']);
+        $this->assertFalse($matcher->explain($szamla, $stranger)['matched']);
+
+        $this->assertSame(2, app(ForwardPlanner::class)->plan($fromBank));
+        $this->assertSame(2, app(ForwardPlanner::class)->plan($invoice));
+        $this->assertSame(0, app(ForwardPlanner::class)->plan($stranger));
+        $this->assertSame(4, Delivery::query()->count());
+    }
+
     public function test_inactive_recipient_is_not_sent(): void
     {
         [$account, $sender, $recipient] = $this->parties();
@@ -149,6 +181,53 @@ class ForwardingTest extends TestCase
         $this->assertSame(40, $second->stored);
         $this->assertSame(80, SourceMessage::query()->count());
         $this->assertSame(80, MailboxSyncState::query()->first()->last_uid);
+    }
+
+    public function test_sync_stores_png_body_as_empty_text_and_advances(): void
+    {
+        $account = $this->account();
+        $client = new ArrayMailboxClient();
+        $png = "\x89PNG\r\n\x1a\n binary";
+        $client->messages = [
+            new ParsedMessage(
+                uid: 1,
+                uidValidity: 100,
+                folder: 'INBOX',
+                messageId: 'png@local',
+                fromRaw: 'Bank <noreplyszepkartya@mbhbank.hu>',
+                fromEmail: 'noreplyszepkartya@mbhbank.hu',
+                subject: 'SZÉP',
+                receivedAt: now(),
+                text: $png,
+                html: '',
+                attachments: [],
+                invoiceLinks: [],
+            ),
+            new ParsedMessage(
+                uid: 2,
+                uidValidity: 100,
+                folder: 'INBOX',
+                messageId: 'ok@local',
+                fromRaw: 'Bank <noreplyszepkartya@mbhbank.hu>',
+                fromEmail: 'noreplyszepkartya@mbhbank.hu',
+                subject: 'SZÉP kártya',
+                receivedAt: now(),
+                text: 'egyenleg',
+                html: '',
+                attachments: [],
+                invoiceLinks: [],
+            ),
+        ];
+        $this->app->instance(MailboxClient::class, $client);
+
+        $result = app(AccountSyncService::class)->sync($account);
+
+        $this->assertSame(2, $result->stored);
+        $this->assertNull($result->error);
+        $this->assertSame('active', $account->fresh()->status);
+        $this->assertSame('', (string) SourceMessage::query()->where('uid', 1)->value('text_body'));
+        $this->assertSame('egyenleg', SourceMessage::query()->where('uid', 2)->value('text_body'));
+        $this->assertSame(2, MailboxSyncState::query()->first()->last_uid);
     }
 
     public function test_parallel_delivery_is_blocked_by_unique_key_and_lock(): void

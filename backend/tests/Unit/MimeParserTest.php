@@ -59,4 +59,20 @@ RAWMSG;
         $this->assertCount(2, $links);
         $this->assertFalse(collect($links)->contains(fn ($url) => str_contains($url, 'evil.example')));
     }
+
+    public function test_inline_png_is_not_stored_as_text(): void
+    {
+        $raw = "From: Bank <noreplyszepkartya@mbhbank.hu>\n".
+            "Subject: kep\n".
+            "MIME-Version: 1.0\n".
+            "Content-Type: image/png\n".
+            "Content-Transfer-Encoding: base64\n\n".
+            base64_encode("\x89PNG\r\n\x1a\n");
+
+        $parsed = (new MimeParser())->parse($raw);
+
+        $this->assertSame('', $parsed->text);
+        $this->assertCount(1, $parsed->attachments);
+        $this->assertSame('image/png', $parsed->attachments[0]->mimeType);
+    }
 }

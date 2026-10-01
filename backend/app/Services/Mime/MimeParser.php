@@ -101,7 +101,15 @@ class MimeParser
         $charset = $params['charset'] ?? 'UTF-8';
         $disposition = strtolower($headers['content-disposition'] ?? '');
         $filename = $this->filename($headers, $params);
-        $isAttachment = str_contains($disposition, 'attachment') || ($filename !== null && ! str_starts_with($type, 'text/'));
+        $isBinaryType = str_starts_with($type, 'image/')
+            || str_starts_with($type, 'audio/')
+            || str_starts_with($type, 'video/')
+            || $type === 'application/octet-stream'
+            || $type === 'application/pdf';
+        $isAttachment = str_contains($disposition, 'attachment')
+            || $isBinaryType
+            || ($filename !== null && ! str_starts_with($type, 'text/'))
+            || \App\Support\Utf8Text::isBinary($decoded);
 
         if ($isAttachment) {
             return [
@@ -112,6 +120,13 @@ class MimeParser
         }
 
         $textContent = $this->toUtf8($decoded, $charset);
+        if ($textContent === '' && \App\Support\Utf8Text::isBinary($decoded)) {
+            return [
+                'text' => '',
+                'html' => '',
+                'attachments' => [new ParsedAttachment($filename ?: 'melleklet.bin', $type, $decoded)],
+            ];
+        }
         if ($type === 'text/html') {
             return ['text' => '', 'html' => $textContent, 'attachments' => []];
         }
@@ -168,14 +183,18 @@ class MimeParser
 
     private function toUtf8(string $value, string $charset): string
     {
+        if (\App\Support\Utf8Text::isBinary($value)) {
+            return '';
+        }
+
         $charset = strtoupper(trim($charset));
         if ($charset === '' || $charset === 'UTF-8' || $charset === 'UTF8') {
-            return $value;
+            return \App\Support\Utf8Text::sanitize($value);
         }
 
         $converted = @mb_convert_encoding($value, 'UTF-8', $charset);
 
-        return $converted === false ? $value : $converted;
+        return \App\Support\Utf8Text::sanitize($converted === false ? $value : $converted);
     }
 
     /**

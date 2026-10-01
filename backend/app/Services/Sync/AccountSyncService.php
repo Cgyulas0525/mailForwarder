@@ -9,6 +9,7 @@ use App\Models\SourceMessage;
 use App\Services\Mail\MailboxClient;
 use App\Services\Mail\ParsedMessage;
 use App\Support\ErrorSanitizer;
+use App\Support\Utf8Text;
 use Illuminate\Support\Facades\Storage;
 
 class AccountSyncService
@@ -77,7 +78,17 @@ class AccountSyncService
 
                     /** @var ParsedMessage $parsed */
                     $parsed = $event['ok'];
-                    $stored = $this->store($account, $parsed);
+                    try {
+                        $stored = $this->store($account, $parsed);
+                    } catch (\Throwable) {
+                        $result->failed++;
+                        if ($uid > $cursor) {
+                            $cursor = $uid;
+                            $advanced = true;
+                        }
+                        $seen++;
+                        continue;
+                    }
                     if ($stored['created']) {
                         $result->stored++;
                         $result->planned += $this->planner->plan($stored['message']);
@@ -134,13 +145,13 @@ class AccountSyncService
                 'uid' => $parsed->uid,
             ],
             [
-                'message_id' => $parsed->messageId,
-                'from_raw' => $parsed->fromRaw,
-                'from_email' => $parsed->fromEmail,
-                'subject' => $parsed->subject,
+                'message_id' => Utf8Text::sanitize($parsed->messageId),
+                'from_raw' => Utf8Text::sanitize($parsed->fromRaw),
+                'from_email' => Utf8Text::sanitize($parsed->fromEmail),
+                'subject' => Utf8Text::sanitize($parsed->subject),
                 'received_at' => $parsed->receivedAt,
-                'text_body' => $parsed->text,
-                'html_body' => $parsed->html,
+                'text_body' => Utf8Text::sanitize($parsed->text) ?: null,
+                'html_body' => Utf8Text::sanitize($parsed->html) ?: null,
                 'invoice_links' => $parsed->invoiceLinks,
             ]
         );
