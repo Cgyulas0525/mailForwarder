@@ -8,7 +8,7 @@ use App\Models\SourceMessage;
 class ForwardingRuleMatcher
 {
     /**
-     * Üres szabály (nincs aktív feladó és nincs linkfeltétel) nem illeszkedik.
+     * Üres szabály (nincs aktív feladó, linkfeltétel vagy tárgyszűrő) nem illeszkedik.
      *
      * @return array{matched: bool, conditions: list<string>}
      */
@@ -35,6 +35,11 @@ class ForwardingRuleMatcher
 
         if ($rule->checks_invoice_link) {
             $checks['invoice_link'] = count($message->invoice_links ?? []) > 0;
+        }
+
+        $subjectNeedle = trim((string) $rule->subject_contains);
+        if ($subjectNeedle !== '') {
+            $checks['subject'] = mb_stripos((string) $message->subject, $subjectNeedle) !== false;
         }
 
         if ($checks === []) {

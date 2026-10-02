@@ -145,6 +145,23 @@ class ForwardingTest extends TestCase
         $this->assertSame(4, Delivery::query()->count());
     }
 
+    public function test_subject_contains_elektronikus_szamla_matches_without_invoice_link(): void
+    {
+        [$account, $sender, $recipient] = $this->parties();
+        $rule = $this->rule($account, 'any', true, [], [$recipient], 'számla', 'Elektronikus számla');
+        $matcher = app(ForwardingRuleMatcher::class);
+
+        $bySubject = $this->message($account, 'idegen@example.com', [], uid: 1, subject: 'Elektronikus számla — 2026');
+        $this->assertTrue($matcher->explain($rule, $bySubject)['matched']);
+        $this->assertSame(['subject'], $matcher->explain($rule, $bySubject)['conditions']);
+
+        $byLink = $this->message($account, 'idegen@example.com', ['https://www.szamlazz.hu/szamla/fiok/9'], uid: 2);
+        $this->assertTrue($matcher->explain($rule, $byLink)['matched']);
+
+        $neither = $this->message($account, 'idegen@example.com', [], uid: 3, subject: 'Hírlevél');
+        $this->assertFalse($matcher->explain($rule, $neither)['matched']);
+    }
+
     public function test_inactive_recipient_is_not_sent(): void
     {
         [$account, $sender, $recipient] = $this->parties();
@@ -455,13 +472,14 @@ class ForwardingTest extends TestCase
      * @param  list<EmailSender>  $senders
      * @param  list<ForwardRecipient>  $recipients
      */
-    private function rule(GmailAccount $account, string $mode, bool $link, array $senders, array $recipients, string $name = 'Szabály'): ForwardingRule
+    private function rule(GmailAccount $account, string $mode, bool $link, array $senders, array $recipients, string $name = 'Szabály', ?string $subjectContains = null): ForwardingRule
     {
         $rule = ForwardingRule::query()->create([
             'name' => $name,
             'is_active' => true,
             'match_mode' => $mode,
             'checks_invoice_link' => $link,
+            'subject_contains' => $subjectContains,
         ]);
         $rule->accounts()->sync([$account->id]);
         $rule->senders()->sync(collect($senders)->pluck('id'));
@@ -473,7 +491,7 @@ class ForwardingTest extends TestCase
     /**
      * @param  list<string>  $links
      */
-    private function message(GmailAccount $account, string $from, array $links, int $uid = 1): SourceMessage
+    private function message(GmailAccount $account, string $from, array $links, int $uid = 1, ?string $subject = null): SourceMessage
     {
         return SourceMessage::query()->create([
             'gmail_account_id' => $account->id,
@@ -482,7 +500,7 @@ class ForwardingTest extends TestCase
             'uid' => $uid,
             'from_email' => $from,
             'from_raw' => $from,
-            'subject' => 'Teszt '.$uid,
+            'subject' => $subject ?? ('Teszt '.$uid),
             'text_body' => 'szöveg',
             'invoice_links' => $links,
             'received_at' => now(),

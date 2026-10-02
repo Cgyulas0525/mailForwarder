@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ForwardingRule extends Model
 {
-    protected $fillable = ['name', 'is_active', 'match_mode', 'checks_invoice_link'];
+    protected $fillable = ['name', 'is_active', 'match_mode', 'checks_invoice_link', 'subject_contains'];
 
     protected function casts(): array
     {

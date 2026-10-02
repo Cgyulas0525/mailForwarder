@@ -85,9 +85,12 @@ class ForwardingRuleController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'match_mode' => ['required', 'in:any,all'],
             'checks_invoice_link' => ['nullable', 'boolean'],
+            'subject_contains' => ['nullable', 'string', 'max:255'],
         ]);
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
         $data['checks_invoice_link'] = (bool) ($data['checks_invoice_link'] ?? false);
+        $needle = trim((string) ($data['subject_contains'] ?? ''));
+        $data['subject_contains'] = $needle !== '' ? $needle : null;
 
         return $data;
     }

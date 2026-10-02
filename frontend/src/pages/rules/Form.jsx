@@ -8,6 +8,7 @@ export function emptyRule() {
     name: '',
     match_mode: 'any',
     checks_invoice_link: true,
+    subject_contains: '',
     is_active: true,
     account_ids: [],
     sender_ids: [],
@@ -20,6 +21,7 @@ export function ruleFromRow(row) {
     name: row.name ?? '',
     match_mode: row.match_mode ?? 'any',
     checks_invoice_link: !!row.checks_invoice_link,
+    subject_contains: row.subject_contains ?? '',
     is_active: !!row.is_active,
     account_ids: (row.accounts || []).map((item) => item.id),
     sender_ids: (row.senders || []).map((item) => item.id),
@@ -32,6 +34,7 @@ export function rulePayload(form) {
     name: form.name,
     match_mode: form.match_mode,
     checks_invoice_link: !!form.checks_invoice_link,
+    subject_contains: (form.subject_contains || '').trim(),
     is_active: !!form.is_active,
     account_ids: form.account_ids,
     sender_ids: form.sender_ids,
@@ -64,6 +67,15 @@ export default function RuleForm({ title, form, setForm, errors, processing, onS
         <input type="checkbox" checked={!!form.checks_invoice_link} onChange={(event) => set('checks_invoice_link', event.target.checked)} />
         Számlázz.hu letöltési link
       </label>
+      <Field id="subject_contains" label="Tárgy tartalmazza" error={fieldError(errors, 'subject_contains')}>
+        <input
+          id="subject_contains"
+          className={inputClass}
+          value={form.subject_contains}
+          onChange={(event) => set('subject_contains', event.target.value)}
+          placeholder="pl. Elektronikus számla"
+        />
+      </Field>
       <label className="text-sm flex items-center gap-2">
         <input type="checkbox" checked={!!form.is_active} onChange={(event) => set('is_active', event.target.checked)} />
         Aktív

@@ -15,12 +15,13 @@ export default function RulesIndex() {
   const load = () => api('/rules').then((data) => setRows(data.data))
   useEffect(() => { load().catch((error) => notify(error.message)) }, [])
 
-  const visible = rows.filter((row) => matchesSearch(row, search, ['name', 'match_mode']))
+  const visible = rows.filter((row) => matchesSearch(row, search, ['name', 'match_mode', 'subject_contains']))
 
   const columns = [
     { key: 'name', label: 'Név' },
     { key: 'match_mode', label: 'Kapcsolat', render: (row) => (row.match_mode === 'all' ? 'ÉS' : 'VAGY') },
     { key: 'checks_invoice_link', label: 'Számlalink', render: (row) => (row.checks_invoice_link ? 'igen' : 'nem') },
+    { key: 'subject_contains', label: 'Tárgy', render: (row) => row.subject_contains || '—' },
     { key: 'is_active', label: 'Állapot', render: (row) => (row.is_active ? 'aktív' : 'inaktív') },
     {
       key: 'accounts',
